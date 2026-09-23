@@ -1,0 +1,298 @@
+<role>
+Act as a senior full-stack engineer.
+Use English for code identifiers, documentation,
+and delivery notes.
+</role>
+
+<objective>
+Create and validate the local monorepo foundation
+for a phonics learning POC, using a small hexagonal
+architecture with relational and NoSQL persistence.
+</objective>
+
+<product_context>
+The application presents one configurable Brazilian Portuguese
+word, such as SAPO, on a single page.
+
+The learner progresses through:
+1. Individual letter sounds.
+2. Combinations of those sounds.
+3. The complete word.
+
+The page highlights the letters involved in each step
+and provides:
+- Reference-audio playback.
+- Microphone recording and stop controls.
+- Playback of the learner's recording.
+- A next-step action.
+- A progress indicator.
+
+The learner can listen to the reference, record an attempt,
+replay both separately, and repeat before continuing.
+
+Each sound combination has its own reference recording.
+The lesson definition contains the target word, language,
+ordered steps, highlighted letters, instructions,
+and reference-audio locations.
+
+Learner recordings remain temporarily in browser memory.
+
+Relational storage holds lessons and their ordered steps.
+DynamoDB stores anonymous practice-session progress.
+
+An evaluation-service port initially uses a deterministic
+success mock, explicitly identified as simulated.
+It provides an extension point for a future AI integration.
+</product_context>
+
+<delivery_scope>
+This execution establishes project configuration,
+architectural boundaries, local persistence, and technical
+verification through a minimal working demonstration.
+
+The learning interface and audio interactions described
+above provide context for subsequent feature implementation.
+
+The immediate focus is working code and local databases.
+AWS infrastructure is a separate, subsequent phase.
+
+The project supports interview preparation.
+The overall budget is BRL 50.
+</delivery_scope>
+
+<architecture>
+FRONTEND
+- React, Vite, and TypeScript.
+- Material UI with responsive styling.
+- English and Portuguese i18n scaffolding.
+- Browser-compatible shared API contracts.
+
+BACKEND
+- Node.js, NestJS, and TypeScript.
+- Domain: entities, value types, and business rules.
+- Application: use cases and repository/service ports.
+- Adapters: HTTP, persistence, and external-service adapters.
+- Composition: Nest modules, injection tokens,
+  and environment configuration.
+
+DEPENDENCY DIRECTION
+Domain and application code depend on application-owned
+models and contracts.
+
+Adapters implement those contracts.
+Nest configuration connects ports to concrete adapters.
+
+Keep controllers focused on HTTP transport and validation.
+Keep use cases focused on application behavior.
+
+RELATIONAL PERSISTENCE
+- Local database: PostgreSQL in Docker.
+- Data-access library: Prisma.
+- Responsibility: lessons and ordered lesson steps.
+- Future AWS target: Aurora PostgreSQL-Compatible.
+
+NOSQL PERSISTENCE
+- Local database: DynamoDB Local in Docker.
+- Modeling library: Dynamoose.
+- Responsibility: anonymous practice-session progress.
+- Future AWS target: Amazon DynamoDB.
+
+PERSISTENCE BOUNDARIES
+Define a lesson-repository port and a progress-repository port
+using application-owned types and meaningful operations.
+
+Keep Prisma queries, generated types, and database mappings
+inside the relational adapter.
+
+Keep Dynamoose schemas, queries, and database mappings
+inside the DynamoDB adapter.
+
+Translate database results and errors into application-owned
+contracts at the adapter boundary.
+
+Each database owns its data. Session progress references
+the lesson through its application-owned identifier.
+
+SERVICE BOUNDARIES
+Define an evaluation-service port and a mock adapter.
+Use Nest dependency injection to select the implementation.
+
+MONOREPO
+Proposed tooling: pnpm workspaces and Turborepo.
+
+Structure:
+- apps/frontend
+- apps/backend
+- packages/shared
+
+Shared packages contain browser-compatible API DTOs
+and contracts. Persistence models belong to backend
+adapters, and domain models belong to the backend core.
+</architecture>
+
+<implementation_guidelines>
+Inspect repository instructions and existing files.
+Preserve existing work and follow applicable conventions.
+
+Keep the architecture proportional to the POC.
+Introduce abstractions for concrete responsibilities.
+
+Document adapter replacement and data-migration
+responsibilities.
+
+Select compatible versions using current documentation.
+Pin the package manager and include a lockfile.
+
+Provide environment examples and startup validation.
+Keep local execution self-contained.
+
+Manage secrets through ignored local configuration files.
+Expose only public configuration to the frontend.
+</implementation_guidelines>
+
+<tools>
+Use Context7 to verify configuration for frameworks,
+testing tools, Prisma, and Dynamoose.
+
+Use the Material UI MCP for React/Vite integration
+and starter components.
+
+Apply compatible local skills and consult official
+documentation for the selected tools.
+</tools>
+
+<task>
+1. CONFIGURE THE MONOREPO
+   Set up workspaces, package dependencies, task ordering,
+   TypeScript, linting, and formatting.
+
+   Provide root scripts for:
+   development, build, tests, linting, and type checking.
+
+2. BOOTSTRAP THE FRONTEND
+   Configure React/Vite and Material UI.
+   Add a responsive starter page.
+   Configure English and Portuguese i18n resources.
+   Configure the backend URL through environment settings.
+
+3. BOOTSTRAP THE BACKEND
+   Configure NestJS, local HTTP startup, environment
+   validation, CORS, transport validation,
+   and basic error handling.
+
+   Establish domain, application, adapter,
+   and composition boundaries.
+
+4. VERIFY FRONTEND/BACKEND CONNECTIVITY
+   Add a health/status endpoint and shared response DTO.
+
+   Display API connection status on the frontend,
+   including loading, success, and error states.
+
+5. CONFIGURE RELATIONAL PERSISTENCE
+   Add PostgreSQL to the local Docker environment.
+   Configure Prisma, schema generation, and migrations.
+
+   Create an idempotent seed containing one example lesson
+   and its ordered steps.
+
+   Implement the lesson-repository adapter and a minimal
+   application use case that retrieves the example lesson.
+
+6. CONFIGURE NOSQL PERSISTENCE
+   Add DynamoDB Local to the Docker environment.
+   Define the table, partition key, and any required sort key.
+   Provide a repeatable local table-initialization command.
+
+   Implement the Dynamoose progress-repository adapter
+   and minimal application use cases to save and retrieve
+   anonymous session progress.
+
+7. CONNECT PORTS AND ADAPTERS
+   Bind repository and evaluation-service ports
+   to their adapters using Nest modules and injection tokens.
+
+   Provide the deterministic mock evaluation adapter,
+   with an explicit indication that its result is simulated.
+
+8. CONFIGURE LOCAL CONTAINERS
+   Provide Dockerfiles, .dockerignore, and compose.yaml
+   for the applications and both databases.
+
+   Include readiness checks, named volumes,
+   host/container endpoints, initialization instructions,
+   and documented reset commands.
+
+9. CONFIGURE TESTING
+   Configure frontend and backend unit tests
+   and API/persistence integration tests.
+
+   Use fake or in-memory adapters to test application logic.
+   Test persistence adapters against their local databases.
+
+   Cover starter UI states, mock evaluation labeling,
+   seeded lesson retrieval, and a session-progress
+   write/read round trip.
+
+10. CONFIGURE CI
+    Prepare lint, type-check, test, and build checks.
+    Include database services required by integration tests.
+
+    Use the existing repository platform, with GitHub Actions
+    as the proposed default.
+
+11. DOCUMENT THE SETUP
+    Save this prompt in the repository.
+
+    Write an English README covering:
+    - Architecture and dependency direction.
+    - Folder structure.
+    - Prerequisites and environment configuration.
+    - Startup and Docker commands.
+    - Prisma migrations and seeds.
+    - DynamoDB table initialization.
+    - Tests and builds.
+    - Local reset operations.
+    - Adapter responsibilities.
+    - Subsequent AWS integration tasks.
+
+    Record Aurora PostgreSQL and AWS DynamoDB
+    as the future deployment targets.
+</task>
+
+<verification>
+Run dependency installation, linting, type checking,
+unit tests, integration tests, and production builds.
+
+Verify shared-package resolution and frontend/backend
+communication.
+
+Verify migration and seed reproducibility,
+example-lesson retrieval, and progress persistence
+across application restarts.
+
+Inspect imports and public contracts to confirm that
+domain and application code depend on their own ports
+and models, with Prisma and Dynamoose isolated in adapters.
+
+Validate Compose and execute the local stack
+when Docker is available.
+
+Report checks as passed, failed, or pending,
+with reasons and remaining prerequisites.
+</verification>
+
+<output_contract>
+Deliver:
+- A locally runnable monorepo.
+- Both local database configurations.
+- Repository and service ports.
+- Concrete persistence and mock adapters.
+- Tests and CI configuration.
+- The saved setup prompt.
+- An English README.
+
+Summarize architecture decisions, startup commands,
+verification results, and prerequisites for the later
+AWS infrastructure phase.
+</output_contract>

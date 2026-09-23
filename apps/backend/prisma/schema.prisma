@@ -1,0 +1,25 @@
+generator client {
+  provider = "prisma-client"
+  output = "../src/adapters/persistence/generated"
+  moduleFormat = "cjs"
+}
+datasource db {
+  provider = "postgresql"
+}
+model Lesson {
+  id String @id
+  word String
+  language String
+  steps LessonStep[]
+}
+model LessonStep {
+  id String @id
+  lessonId String
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  position Int
+  kind String
+  highlightedLetters Int[]
+  instruction String
+  referenceAudioUrl String?
+  @@unique([lessonId, position])
+}

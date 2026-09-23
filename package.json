@@ -1,0 +1,36 @@
+{
+  "name": "phonics-foundation",
+  "private": true,
+  "packageManager": "pnpm@10.34.5",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "eslint . && node scripts/check-boundaries.mjs",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:integration": "pnpm --filter @phonics/shared build && pnpm --filter @phonics/backend test:integration",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "pnpm --filter @phonics/backend db:generate",
+    "db:migrate": "pnpm --filter @phonics/backend db:migrate",
+    "db:seed": "pnpm --filter @phonics/shared build && pnpm --filter @phonics/backend db:seed",
+    "db:init": "pnpm --filter @phonics/shared build && pnpm --filter @phonics/backend db:init",
+    "db:up": "docker compose up -d --wait postgres dynamodb dynamodb-ready",
+    "stack:build": "node scripts/docker-build.mjs",
+    "stack:up": "pnpm stack:build && docker compose up -d --wait",
+    "stack:down": "docker compose down"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@types/node": "^24.0.0",
+    "eslint": "^9.39.0",
+    "globals": "^16.0.0",
+    "prettier": "^3.6.2",
+    "turbo": "^2.5.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "^8.46.0"
+  }
+}

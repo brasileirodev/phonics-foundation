@@ -1,0 +1,21 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.34.5 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+      - run: cp apps/backend/.env.example apps/backend/.env && cp apps/frontend/.env.example apps/frontend/.env
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:up
+      - run: pnpm db:migrate && pnpm db:migrate
+      - run: pnpm db:seed && pnpm db:init
+      - run: pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm test:integration && pnpm build
+      - run: docker compose config --quiet
+      - if: always()
+        run: docker compose logs && docker compose down

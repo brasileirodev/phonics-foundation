@@ -1,0 +1,101 @@
+name: phonics
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: phonics
+      POSTGRES_PASSWORD: phonics_local
+      POSTGRES_DB: phonics
+    ports: ['127.0.0.1:5433:5432']
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U phonics -d phonics']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  dynamodb:
+    image: amazon/dynamodb-local:3.3.0
+    user: root
+    working_dir: /home/dynamodblocal
+    command: '-jar DynamoDBLocal.jar -sharedDb -dbPath /home/dynamodblocal/data'
+    ports: ['127.0.0.1:8000:8000']
+    volumes: [dynamodb-data:/home/dynamodblocal/data]
+  dynamodb-ready:
+    image: node:24-bookworm-slim
+    depends_on: [dynamodb]
+    command:
+      [
+        'node',
+        '-e',
+        "require('http').createServer((q,s)=>s.end('ok')).listen(8080)",
+      ]
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://dynamodb:8000').then(r=>{if(r.status!==400)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  initialize:
+    build: { context: ., dockerfile: apps/backend/Dockerfile }
+    image: phonics-backend:local
+    environment: &backend-env
+      PORT: 4000
+      FRONTEND_ORIGIN: http://localhost:3000
+      DATABASE_URL: postgresql://phonics:phonics_local@postgres:5432/phonics
+      DYNAMODB_ENDPOINT: http://dynamodb:8000
+      DYNAMODB_TABLE: phonics-progress
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+    depends_on:
+      postgres: { condition: service_healthy }
+      dynamodb-ready: { condition: service_healthy }
+    command:
+      [
+        'sh',
+        '-c',
+        'pnpm db:migrate && node dist/src/adapters/persistence/postgres/seed.js && node dist/src/adapters/persistence/dynamo/init.js',
+      ]
+    restart: 'no'
+  backend:
+    image: phonics-backend:local
+    build: { context: ., dockerfile: apps/backend/Dockerfile }
+    environment: *backend-env
+    ports: ['127.0.0.1:4000:4000']
+    depends_on:
+      initialize: { condition: service_completed_successfully }
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:4000/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+  frontend:
+    image: phonics-frontend:local
+    build:
+      {
+        context: .,
+        dockerfile: apps/frontend/Dockerfile,
+        args: { VITE_API_URL: 'http://localhost:4000' },
+      }
+    ports: ['127.0.0.1:3000:80']
+    depends_on:
+      backend: { condition: service_healthy }
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1/']
+      interval: 10s
+      timeout: 3s
+      retries: 10
+volumes:
+  postgres-data:
+  dynamodb-data:
